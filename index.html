@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Celery 速成指南</title>
+  <style>
+    :root {
+      --green:  #37a76f;
+      --green-light: #e8f7ef;
+      --dark:   #1e2636;
+      --gray:   #f4f6f9;
+      --border: #dde3ed;
+      --code-bg:#1e2636;
+      --code-fg:#a8ddb5;
+      --warn-bg:#fff8e1;
+      --warn-border:#f0c040;
+      --tip-bg: #e8f7ef;
+      --tip-border:#37a76f;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #f0f2f7;
+      color: #2d3748;
+      line-height: 1.7;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1b6e47 0%, #37a76f 100%);
+      color: #fff;
+      padding: 48px 24px 40px;
+      text-align: center;
+    }
+    header .badge {
+      display: inline-block;
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 20px;
+      font-size: .8rem;
+      padding: 3px 14px;
+      margin-bottom: 16px;
+      letter-spacing: .04em;
+    }
+    header h1 { font-size: 2.6rem; font-weight: 700; letter-spacing: -.02em; }
+    header p  { margin-top: 10px; font-size: 1.1rem; opacity: .88; max-width: 560px; margin-inline: auto; }
+    .source-bar {
+      background: #fffbeb;
+      border-bottom: 1px solid #f0c040;
+      text-align: center;
+      padding: 9px 16px;
+      font-size: .88rem;
+      color: #7a5c00;
+    }
+    .source-bar a { color: #b45309; font-weight: 600; }
+
+    /* ── Layout ── */
+    .container { max-width: 860px; margin: 0 auto; padding: 32px 20px 60px; }
+
+    /* ── TOC ── */
+    .toc {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 36px;
+    }
+    .toc h2 { font-size: 1rem; color: var(--green); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .06em; }
+    .toc ol  { padding-left: 20px; }
+    .toc li  { margin: 4px 0; }
+    .toc a   { color: #4a5568; text-decoration: none; }
+    .toc a:hover { color: var(--green); text-decoration: underline; }
+
+    /* ── Section cards ── */
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      scroll-margin-top: 20px;
+    }
+    .card h2 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--dark);
+      border-left: 4px solid var(--green);
+      padding-left: 12px;
+      margin-bottom: 16px;
+    }
+    .card h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin: 20px 0 8px;
+    }
+    .card p  { margin-bottom: 12px; }
+    .card ul, .card ol { padding-left: 22px; margin-bottom: 12px; }
+    .card li { margin: 5px 0; }
+
+    /* ── Step badges ── */
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .step-num {
+      background: var(--green);
+      color: #fff;
+      border-radius: 50%;
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .step-header h2 { border: none; padding: 0; margin: 0; font-size: 1.35rem; }
+
+    /* ── Code blocks ── */
+    pre {
+      background: var(--code-bg);
+      border-radius: 10px;
+      padding: 16px 20px;
+      overflow-x: auto;
+      margin: 14px 0;
+      position: relative;
+    }
+    pre code {
+      font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+      font-size: .9rem;
+      color: var(--code-fg);
+      background: transparent;
+    }
+    /* inline code */
+    p code, li code {
+      background: #edf2ff;
+      color: #3730a3;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: .88em;
+      font-family: "Cascadia Code", "Consolas", monospace;
+    }
+    /* shell prompt colour */
+    .sh { color: #7ec8e3; }
+    .kw { color: #f97316; }
+    .st { color: #fbbf24; }
+    .cm { color: #6b7280; }
+    .fn { color: #60a5fa; }
+
+    /* ── Callout boxes ── */
+    .tip, .warn, .info {
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 14px 0;
+      font-size: .95rem;
+    }
+    .tip  { background: var(--tip-bg);  border-left: 4px solid var(--tip-border); }
+    .warn { background: var(--warn-bg); border-left: 4px solid var(--warn-border); }
+    .info { background: #eff6ff;        border-left: 4px solid #3b82f6; }
+    .tip::before  { content: "✅ 提示  "; font-weight: 700; }
+    .warn::before { content: "⚠️ 注意  "; font-weight: 700; }
+    .info::before { content: "ℹ️ 说明  "; font-weight: 700; }
+
+    /* ── Diagram ── */
+    .diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: wrap;
+      margin: 18px 0;
+    }
+    .dia-box {
+      background: var(--green-light);
+      border: 2px solid var(--green);
+      border-radius: 10px;
+      padding: 10px 20px;
+      text-align: center;
+      font-weight: 600;
+      font-size: .95rem;
+      min-width: 110px;
+    }
+    .dia-arrow {
+      font-size: 1.6rem;
+      color: var(--green);
+      padding: 0 8px;
+    }
+
+    /* ── Broker picker ── */
+    .broker-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 14px 0;
+    }
+    .broker-card {
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+    }
+    .broker-card.recommended { border-color: var(--green); }
+    .broker-card h4 { font-size: 1rem; margin-bottom: 4px; }
+    .broker-card .rec-tag {
+      display: inline-block;
+      background: var(--green);
+      color: #fff;
+      border-radius: 12px;
+      font-size: .72rem;
+      padding: 1px 8px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .broker-card p { font-size: .9rem; color: #555; margin: 0; }
+
+    /* ── Result state table ── */
+    table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .93rem; }
+    th {
+      background: var(--dark);
+      color: #fff;
+      padding: 9px 14px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td { padding: 8px 14px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: var(--gray); }
+
+    /* ── Next steps ── */
+    .next-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .next-item {
+      background: var(--gray);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .next-item .icon { font-size: 1.8rem; margin-bottom: 6px; }
+    .next-item a { color: var(--green); text-decoration: none; font-weight: 600; font-size: .92rem; }
+    .next-item p { font-size: .82rem; color: #666; margin-top: 4px; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      color: #888;
+      font-size: .85rem;
+      margin-top: 40px;
+      padding-bottom: 20px;
+    }
+    footer a { color: var(--green); }
+
+    @media(max-width:600px){
+      header h1 { font-size: 1.9rem; }
+      .card { padding: 20px 18px; }
+      .broker-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─────────────────── Source Bar ─────────────────── -->
+<div class="source-bar">
+  📄 本页内容蒸馏自
+  <a href="https://docs.celeryq.dev/en/stable/" target="_blank" rel="noopener">Celery 5.6 官方文档（docs.celeryq.dev）</a>，
+  仅作学习整理，版权归原作者所有，Celery 采用
+  <a href="http://www.opensource.org/licenses/BSD-3-Clause" target="_blank" rel="noopener">BSD 许可证</a>。
+</div>
+
+<!-- ─────────────────── Header ─────────────────── -->
+<header>
+  <div class="badge">Celery 5.6 · 速成指南</div>
+  <h1>🌿 Celery 速成</h1>
+  <p>从零开始，10 分钟内跑起你的第一个异步任务</p>
+</header>
+
+<!-- ─────────────────── Body ─────────────────── -->
+<div class="container">
+
+  <!-- TOC -->
+  <div class="toc">
+    <h2>目录</h2>
+    <ol>
+      <li><a href="#s1">Celery 是什么？</a></li>
+      <li><a href="#s2">核心概念一览</a></li>
+      <li><a href="#s3">选择并启动 Broker</a></li>
+      <li><a href="#s4">安装 Celery</a></li>
+      <li><a href="#s5">创建第一个任务</a></li>
+      <li><a href="#s6">启动 Worker</a></li>
+      <li><a href="#s7">调用任务</a></li>
+      <li><a href="#s8">保存任务结果</a></li>
+      <li><a href="#s9">基础配置</a></li>
+      <li><a href="#s10">常见问题排查</a></li>
+      <li><a href="#s11">下一步学什么？</a></li>
+    </ol>
+  </div>
+
+  <!-- ── S1: 什么是 Celery ── -->
+  <div class="card" id="s1">
+    <h2>1&nbsp;&nbsp;Celery 是什么？</h2>
+    <p>
+      <strong>Celery</strong> 是 Python 生态中最流行的<strong>分布式任务队列</strong>框架。
+      它能让你把耗时的工作（发邮件、处理图片、调用第三方 API……）
+      <strong>从主进程剥离出去</strong>，丢给后台 Worker 异步执行，
+      主程序立刻返回，用户不用傻等。
+    </p>
+    <p>简单来说，Celery 解决的核心问题是：</p>
+    <ul>
+      <li>让慢任务<strong>不阻塞</strong>主线程 / Web 请求</li>
+      <li>把任务分发给<strong>多台机器</strong>并行处理</li>
+      <li><strong>定时</strong>执行任务（类似 cron）</li>
+    </ul>
+    <div class="info">Celery 是 Python 写的，但它的协议可以被 Node.js、Go、Rust 等语言的客户端使用。</div>
+  </div>
+
+  <!-- ── S2: 核心概念 ── -->
+  <div class="card" id="s2">
+    <h2>2&nbsp;&nbsp;核心概念一览</h2>
+    <p>只需理解三个角色，就能看懂 Celery 的整体流程：</p>
+    <div class="diagram">
+      <div class="dia-box">🖥️<br>Producer<br><small>你的应用</small></div>
+      <div class="dia-arrow">→<br><small>发消息</small></div>
+      <div class="dia-box">📦<br>Broker<br><small>消息中间件</small></div>
+      <div class="dia-arrow">→<br><small>分发任务</small></div>
+      <div class="dia-box">⚙️<br>Worker<br><small>后台进程</small></div>
+    </div>
+    <table>
+      <tr><th>角色</th><th>是什么</th><th>常见实现</th></tr>
+      <tr><td><strong>Producer</strong></td><td>触发任务的一方（你的代码）</td><td>任意 Python 进程</td></tr>
+      <tr><td><strong>Broker</strong></td><td>存放待执行消息的队列</td><td>RabbitMQ、Redis</td></tr>
+      <tr><td><strong>Worker</strong></td><td>真正执行任务的后台进程</td><td><code>celery worker</code></td></tr>
+      <tr><td><strong>Result Backend</strong></td><td>存储任务执行结果（可选）</td><td>Redis、RPC、数据库</td></tr>
+    </table>
+  </div>
+
+  <!-- ── S3: Broker ── -->
+  <div class="card" id="s3">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <h2>选择并启动 Broker</h2>
+    </div>
+    <p>Broker 是 Celery 的"邮局"，必须先有它才能传递任务消息。最常用的两种：</p>
+    <div class="broker-grid">
+      <div class="broker-card recommended">
+        <h4>RabbitMQ <span class="rec-tag">推荐生产</span></h4>
+        <p>功能完整、持久化可靠，生产环境首选。</p>
+        <pre><code><span class="sh">$ </span>docker run -d -p 5672:5672 rabbitmq</code></pre>
+      </div>
+      <div class="broker-card recommended">
+        <h4>Redis <span class="rec-tag">推荐入门</span></h4>
+        <p>安装最简单，既能做 Broker 又能做 Result Backend。</p>
+        <pre><code><span class="sh">$ </span>docker run -d -p 6379:6379 redis</code></pre>
+      </div>
+    </div>
+    <div class="tip">新手最省事：用 <strong>Redis</strong>，一个命令搞定 Broker + Result Backend。</div>
+    <p>没有 Docker？</p>
+    <ul>
+      <li>Ubuntu/Debian：<code>sudo apt-get install redis-server</code></li>
+      <li>macOS：<code>brew install redis &amp;&amp; redis-server</code></li>
+      <li>Windows：到 <a href="https://redis.io/docs/install/" target="_blank">redis.io</a> 下载安装包</li>
+    </ul>
+  </div>
+
+  <!-- ── S4: 安装 ── -->
+  <div class="card" id="s4">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <h2>安装 Celery</h2>
+    </div>
+    <p>强烈建议先创建虚拟环境：</p>
+    <pre><code><span class="sh">$ </span>python -m venv venv
+<span class="sh">$ </span>source venv/bin/activate   <span class="cm"># Windows: venv\Scripts\activate</span></code></pre>
+    <p>然后安装 Celery（含 Redis 支持）：</p>
+    <pre><code><span class="sh">$ </span>pip install "celery[redis]"</code></pre>
+    <p>如果用 RabbitMQ：</p>
+    <pre><code><span class="sh">$ </span>pip install celery</code></pre>
+    <div class="info">
+      <code>celery[redis]</code> 会额外安装 <code>redis-py</code>，让 Celery 能直接连 Redis。
+    </div>
+  </div>
+
+  <!-- ── S5: 创建任务 ── -->
+  <div class="card" id="s5">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <h2>创建第一个任务</h2>
+    </div>
+    <p>新建一个文件 <code>tasks.py</code>，写入以下内容：</p>
+    <pre><code><span class="kw">from</span> celery <span class="kw">import</span> Celery
+
+<span class="cm"># 创建 Celery 应用实例</span>
+<span class="cm"># - 第一个参数：当前模块名（让 Celery 自动生成任务名用）</span>
+<span class="cm"># - broker：消息中间件地址</span>
+<span class="cm"># - backend：结果存储地址（可选，但推荐配置）</span>
+app = Celery(
+    <span class="st">'tasks'</span>,
+    broker=<span class="st">'redis://localhost:6379/0'</span>,
+    backend=<span class="st">'redis://localhost:6379/0'</span>,
+)
+
+<span class="cm"># 用 @app.task 把普通函数变成 Celery 任务</span>
+<span class="kw">@app.task</span>
+<span class="kw">def</span> <span class="fn">add</span>(x, y):
+    <span class="kw">return</span> x + y</code></pre>
+    <p>就这么多！<code>@app.task</code> 装饰器告诉 Celery：<em>"这个函数可以被异步调用"</em>。</p>
+
+    <h3>如果用 RabbitMQ，把 broker 改成：</h3>
+    <pre><code>broker=<span class="st">'amqp://guest@localhost//'</span></code></pre>
+  </div>
+
+  <!-- ── S6: 启动 Worker ── -->
+  <div class="card" id="s6">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <h2>启动 Worker</h2>
+    </div>
+    <p>打开一个<strong>新的终端窗口</strong>（保持 Broker 运行），在 <code>tasks.py</code> 同目录下执行：</p>
+    <pre><code><span class="sh">$ </span>celery -A tasks worker --loglevel=INFO</code></pre>
+    <p>参数说明：</p>
+    <ul>
+      <li><code>-A tasks</code>：指定 Celery 应用所在模块（即 <code>tasks.py</code>）</li>
+      <li><code>worker</code>：启动 Worker 子命令</li>
+      <li><code>--loglevel=INFO</code>：显示详细日志，方便调试</li>
+    </ul>
+    <p>看到类似下面的输出就说明 Worker 启动成功了：</p>
+    <pre><code><span class="cm">-------------- celery@hostname v5.6.x (emerald-rush)
+--- ***** -----
+-- ******* ---- macOS-14.x
+- *** --- * ---
+- ** ---------- [config]
+- ** ---------- .> app:         tasks:0x...
+- ** ---------- .> transport:   redis://localhost:6379/0
+- ** ---------- .> results:     redis://localhost:6379/0
+- *** --- * --- .> concurrency: 8 (prefork)
+-- ******* ----
+--- ***** ----- [queues]
+ -------------- .> celery           exchange=celery(direct) key=celery
+
+[tasks]
+  . tasks.add
+
+[2024-01-01 12:00:00,000: INFO/MainProcess] celery@hostname ready.</span></code></pre>
+    <div class="tip">Worker 终端要一直开着。每当有任务进来，这里就会打印执行日志。</div>
+  </div>
+
+  <!-- ── S7: 调用任务 ── -->
+  <div class="card" id="s7">
+    <div class="step-header">
+      <div class="step-num">5</div>
+      <h2>调用任务</h2>
+    </div>
+    <p>再开一个终端，进入 Python 交互式环境：</p>
+    <pre><code><span class="sh">$ </span>python
+>>> <span class="kw">from</span> tasks <span class="kw">import</span> add
+
+<span class="cm"># .delay() 是最简单的异步调用方式</span>
+>>> result = add.delay(4, 4)
+>>> result
+&lt;AsyncResult: 550e8400-e29b-41d4-a716-446655440000&gt;</code></pre>
+
+    <p>切换到 Worker 终端，你会看到类似：</p>
+    <pre><code><span class="cm">[INFO] Received task: tasks.add[550e8400...]
+[INFO] Task tasks.add[550e8400...] succeeded in 0.001s: 8</span></code></pre>
+
+    <h3>调用方式对比</h3>
+    <table>
+      <tr><th>方法</th><th>说明</th><th>示例</th></tr>
+      <tr>
+        <td><code>add.delay(4, 4)</code></td>
+        <td>最常用，简洁</td>
+        <td>异步发出，立即返回</td>
+      </tr>
+      <tr>
+        <td><code>add.apply_async((4, 4))</code></td>
+        <td>完整版，支持更多参数</td>
+        <td>可设置倒计时、超时、优先级等</td>
+      </tr>
+      <tr>
+        <td><code>add(4, 4)</code></td>
+        <td>直接调用，<strong>不经过队列</strong></td>
+        <td>同步执行，用于本地测试</td>
+      </tr>
+    </table>
+
+    <h3>apply_async 进阶示例</h3>
+    <pre><code><span class="cm"># 10 秒后才执行</span>
+add.apply_async((4, 4), countdown=10)
+
+<span class="cm"># 指定在某个时刻执行</span>
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timezone
+add.apply_async((4, 4), eta=datetime(2025, 1, 1, tzinfo=timezone.utc))</code></pre>
+  </div>
+
+  <!-- ── S8: 查看结果 ── -->
+  <div class="card" id="s8">
+    <div class="step-header">
+      <div class="step-num">6</div>
+      <h2>保存 &amp; 查看任务结果</h2>
+    </div>
+    <p>只要 <code>tasks.py</code> 里配了 <code>backend</code>，就能追踪结果：</p>
+    <pre><code>>>> result = add.delay(4, 4)
+
+<span class="cm"># 检查是否已完成</span>
+>>> result.ready()
+<span class="kw">False</span>   <span class="cm"># 还没完成</span>
+>>> result.ready()
+<span class="kw">True</span>    <span class="cm"># 完成了</span>
+
+<span class="cm"># 获取返回值（会阻塞等待，最多等 timeout 秒）</span>
+>>> result.get(timeout=5)
+8
+
+<span class="cm"># 查看任务状态</span>
+>>> result.status
+<span class="st">'SUCCESS'</span></code></pre>
+
+    <h3>任务状态</h3>
+    <table>
+      <tr><th>状态</th><th>含义</th></tr>
+      <tr><td><code>PENDING</code></td><td>等待中（还没被 Worker 接收）</td></tr>
+      <tr><td><code>STARTED</code></td><td>Worker 已开始执行</td></tr>
+      <tr><td><code>SUCCESS</code></td><td>执行成功</td></tr>
+      <tr><td><code>FAILURE</code></td><td>执行失败，有异常</td></tr>
+      <tr><td><code>RETRY</code></td><td>正在重试</td></tr>
+      <tr><td><code>REVOKED</code></td><td>已被撤销</td></tr>
+    </table>
+
+    <div class="warn">
+      每次调用任务拿到的 <code>AsyncResult</code> 对象用完后，记得调用
+      <code>result.get()</code> 或 <code>result.forget()</code>，
+      否则结果会在 Backend 里累积占用空间。
+    </div>
+
+    <h3>处理任务异常</h3>
+    <pre><code>>>> result.get(propagate=<span class="kw">False</span>)  <span class="cm"># 不抛出异常，返回 None</span>
+>>> result.traceback             <span class="cm"># 查看完整错误堆栈</span></code></pre>
+  </div>
+
+  <!-- ── S9: 配置 ── -->
+  <div class="card" id="s9">
+    <h2>9&nbsp;&nbsp;基础配置</h2>
+    <p>对于较大的项目，建议把配置抽到独立文件 <code>celeryconfig.py</code>：</p>
+    <pre><code><span class="cm"># celeryconfig.py</span>
+broker_url          = <span class="st">'redis://localhost:6379/0'</span>
+result_backend      = <span class="st">'redis://localhost:6379/0'</span>
+
+task_serializer     = <span class="st">'json'</span>
+result_serializer   = <span class="st">'json'</span>
+accept_content      = [<span class="st">'json'</span>]
+
+timezone            = <span class="st">'Asia/Shanghai'</span>
+enable_utc          = <span class="kw">True</span>
+
+<span class="cm"># 任务失败自动重试 3 次</span>
+task_acks_late      = <span class="kw">True</span></code></pre>
+    <p>在 <code>tasks.py</code> 里加载它：</p>
+    <pre><code>app.config_from_object(<span class="st">'celeryconfig'</span>)</code></pre>
+    <p>也可以内联写：</p>
+    <pre><code>app.conf.update(
+    task_serializer=<span class="st">'json'</span>,
+    timezone=<span class="st">'Asia/Shanghai'</span>,
+)</code></pre>
+    <div class="tip">时区建议设成 <code>'Asia/Shanghai'</code>，同时开 <code>enable_utc=True</code>，内部用 UTC，显示用本地时间。</div>
+  </div>
+
+  <!-- ── S10: 排错 ── -->
+  <div class="card" id="s10">
+    <h2>10&nbsp;&nbsp;常见问题排查</h2>
+
+    <h3>❌ Worker 启动报 Permission Error</h3>
+    <p>
+      Debian/Ubuntu 可能限制了 <code>/etc/default/rabbitmq</code> 权限，
+      尝试以 <code>sudo</code> 运行 RabbitMQ，或改用 Redis。
+    </p>
+
+    <h3>❌ 任务一直是 PENDING 状态</h3>
+    <ul>
+      <li>检查 <code>tasks.py</code> 里是否配置了 <code>backend</code></li>
+      <li>确认 Worker 和 Producer 连的是<strong>同一个</strong> Broker 地址</li>
+      <li>用 <code>celery -A tasks inspect active</code> 看 Worker 是否真的收到了任务</li>
+    </ul>
+
+    <h3>❌ 连接 Broker 失败</h3>
+    <pre><code><span class="cm"># 检查 Redis 是否在跑</span>
+<span class="sh">$ </span>redis-cli ping
+PONG</code></pre>
+    <p>没有 PONG 说明 Redis 没启动，用 <code>docker start &lt;容器名&gt;</code> 或 <code>redis-server</code> 启动它。</p>
+
+    <h3>❌ Windows 下 Worker 报错 / 无法启动</h3>
+    <div class="warn">
+      Celery 4.x+ 在 Windows 上对多进程支持有限制。
+      推荐加上 <code>--pool=solo</code>（单进程）做本地测试：
+      <pre style="margin-top:8px"><code><span class="sh">$ </span>celery -A tasks worker --loglevel=INFO --pool=solo</code></pre>
+    </div>
+  </div>
+
+  <!-- ── S11: 下一步 ── -->
+  <div class="card" id="s11">
+    <h2>11&nbsp;&nbsp;下一步学什么？</h2>
+    <p>掌握基础之后，推荐按顺序探索这些进阶主题：</p>
+    <div class="next-grid">
+      <div class="next-item">
+        <div class="icon">🔗</div>
+        <a href="https://docs.celeryq.dev/en/stable/getting-started/next-steps.html" target="_blank">Next Steps</a>
+        <p>任务链、Canvas 工作流</p>
+      </div>
+      <div class="next-item">
+        <div class="icon">⏰</div>
+        <a href="https://docs.celeryq.dev/en/stable/userguide/periodic-tasks.html" target="_blank">Periodic Tasks</a>
+        <p>定时任务（beat）</p>
+      </div>
+      <div class="next-item">
+        <div class="icon">🗺️</div>
+        <a href="https://docs.celeryq.dev/en/stable/userguide/canvas.html" target="_blank">Canvas</a>
+        <p>chain / group / chord</p>
+      </div>
+      <div class="next-item">
+        <div class="icon">🌐</div>
+        <a href="https://docs.celeryq.dev/en/stable/django/first-steps-with-django.html" target="_blank">Django 集成</a>
+        <p>与 Django 配合使用</p>
+      </div>
+      <div class="next-item">
+        <div class="icon">👁️</div>
+        <a href="https://docs.celeryq.dev/en/stable/userguide/monitoring.html" target="_blank">Flower 监控</a>
+        <p>Web 界面实时监控</p>
+      </div>
+      <div class="next-item">
+        <div class="icon">📖</div>
+        <a href="https://docs.celeryq.dev/en/stable/userguide/tasks.html" target="_blank">Tasks 深入</a>
+        <p>重试、路由、信号</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<footer>
+  内容蒸馏整理自
+  <a href="https://docs.celeryq.dev/en/stable/" target="_blank" rel="noopener">Celery 5.6 官方文档</a>
+  · 原文版权归
+  <a href="https://github.com/celery/celery" target="_blank" rel="noopener">Celery 项目</a>
+  所有，基于
+  <a href="http://www.opensource.org/licenses/BSD-3-Clause" target="_blank" rel="noopener">BSD License</a>
+  开源 · 本页仅供学习参考，不作商业用途
+</footer>
+
+</body>
+</html>
